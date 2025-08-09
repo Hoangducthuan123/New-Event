@@ -49,7 +49,7 @@ while not clickExitHomeGUI() do
 end
 
 -- Chờ 10 giây sau Exit Home
-task.wait(10)
+task.wait(20)
 
 ------------------------------------
 -- 2) BAY TUẦN TỰ 3 TỌA ĐỘ         --
@@ -92,7 +92,7 @@ local function flyTo(targetPos, speed)
     stepConn:Disconnect()
     hbConn:Disconnect()
     print("✅ Đã tới tọa độ bay:", targetPos)
-    task.wait(10) -- chờ 5 giây trước khi bay tiếp
+    task.wait(20) -- chờ 5 giây trước khi bay tiếp
 end
 
 -- Danh sách điểm bay
@@ -203,4 +203,5 @@ local teleportPoints = {
 for _, pos in ipairs(teleportPoints) do
     teleportTo(pos)
 end
+
 
