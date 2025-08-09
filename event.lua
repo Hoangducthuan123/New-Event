@@ -4,12 +4,13 @@
 local Players = game:GetService("Players")
 local VIM = game:GetService("VirtualInputManager")
 local GuiService = game:GetService("GuiService")
-local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
 
 local function screenInsetFor(guiObject)
     local sg = guiObject:FindFirstAncestorOfClass("ScreenGui")
-    if sg and sg.IgnoreGuiInset then return Vector2.new(0, 0) end
+    if sg and sg.IgnoreGuiInset then
+        return Vector2.new(0, 0)
+    end
     return GuiService:GetGuiInset()
 end
 
@@ -31,7 +32,9 @@ local function clickExitHomeGUI()
             local bag = (gui.Name or "")
             if gui:IsA("TextButton") then bag ..= " " .. (gui.Text or "") end
             for _, d in ipairs(gui:GetDescendants()) do
-                if d:IsA("TextLabel") then bag = bag .. " " .. (d.Text or "") end
+                if d:IsA("TextLabel") then
+                    bag = bag .. " " .. (d.Text or "")
+                end
             end
             if bag:lower():find("exit home") then
                 clickCenterLower(gui, 50)
@@ -43,81 +46,163 @@ local function clickExitHomeGUI()
     return false
 end
 
-for _ = 1, 6 do
-    if clickExitHomeGUI() then break end
+-- Lặp click liên tục đến khi thành công
+while not clickExitHomeGUI() do
     task.wait(0.4)
 end
-task.wait(5) -- chờ 5s sau Exit Home
+
+-- Chờ 10 giây sau Exit Home
+task.wait(10)
 
 ------------------------------------
--- 2) TELEPORT LIÊN TIẾP 4 TỌA ĐỘ  --
+-- 2) BAY TUẦN TỰ 3 TỌA ĐỘ         --
 ------------------------------------
-local function getHRP()
-    local char = player.Character or player.CharacterAdded:Wait()
-    return char:WaitForChild("HumanoidRootPart")
+local function flyTo(targetPos, speed)
+    local flying = true
+    local RunService = game:GetService("RunService")
+
+    local stepConn = RunService.Stepped:Connect(function()
+        if flying and player.Character then
+            for _, part in ipairs(player.Character:GetDescendants()) do
+                if part:IsA("BasePart") and part.CanCollide then
+                    part.CanCollide = false
+                end
+            end
+        end
+    end)
+
+    local hbConn = RunService.Heartbeat:Connect(function(dt)
+        if not flying then return end
+        local char = player.Character
+        if char and char:FindFirstChild("HumanoidRootPart") then
+            local hrp = char.HumanoidRootPart
+            local direction = (targetPos - hrp.Position)
+            local distance = direction.Magnitude
+            if distance > 3 then
+                local move = direction.Unit * speed * dt
+                if move.Magnitude > distance then
+                    move = direction
+                end
+                hrp.CFrame = hrp.CFrame + move
+            else
+                flying = false
+            end
+        end
+    end)
+
+    -- Chờ tới khi bay xong
+    repeat task.wait() until not flying
+    stepConn:Disconnect()
+    hbConn:Disconnect()
+    print("✅ Đã tới tọa độ bay:", targetPos)
+    task.wait(5) -- chờ 5 giây trước khi bay tiếp
 end
 
-local tpPoints = {
+-- Danh sách điểm bay
+local flyPoints = {
+    Vector3.new(-12007.47, 9529.38, -11910.67),
+    Vector3.new(13.04, 37.35, -1500.01),
+    Vector3.new(8999.53, 6814.95, 12011.76),
+}
+
+for _, pos in ipairs(flyPoints) do
+    flyTo(pos, 100)
+end
+
+------------------------------------
+-- 3) CLICK GUI PLAY TEMPLE TREK  --
+------------------------------------
+local function bagText(btn)
+    local s = (btn.Name or "")
+    if btn:IsA("TextButton") then s ..= " " .. (btn.Text or "") end
+    for _,d in ipairs(btn:GetDescendants()) do
+        if d:IsA("TextLabel") then s ..= " " .. (d.Text or "") end
+    end
+    return s:lower()
+end
+
+local function insetFor(obj)
+    local sg = obj:FindFirstAncestorOfClass("ScreenGui")
+    if sg and sg.IgnoreGuiInset then return Vector2.zero end
+    return GuiService:GetGuiInset()
+end
+
+local function findBtn()
+    local pg = player:FindFirstChild("PlayerGui")
+    if not pg then return end
+    for _,g in ipairs(pg:GetDescendants()) do
+        if (g:IsA("TextButton") or g:IsA("ImageButton")) and g.Visible and g.Active then
+            local t = bagText(g)
+            if t:find("temple trek") or t:find("play temple") or t:find("free") then
+                return g
+            end
+        end
+    end
+end
+
+local function clickPointsOn(btn)
+    local pos, size = btn.AbsolutePosition, btn.AbsoluteSize
+    local inset = insetFor(btn)
+    local cx, cy = pos.X + size.X/2 + inset.X, pos.Y + size.Y/2 + inset.Y
+    return {
+        Vector2.new(cx, cy),
+        Vector2.new(cx, cy + 10),
+        Vector2.new(cx, cy + 18),
+        Vector2.new(cx - size.X*0.25, cy + 8),
+        Vector2.new(cx + size.X*0.25, cy + 8),
+    }
+end
+
+local function fireMouseAt(btn, p)
+    VIM:SendMouseButtonEvent(p.X, p.Y, 0, true, btn, 0)
+    VIM:SendMouseButtonEvent(p.X, p.Y, 0, false, btn, 0)
+end
+
+local function fireTouchAt(btn, p)
+    VIM:SendTouchEvent(p.X, p.Y, 1, true, btn)
+    VIM:SendTouchEvent(p.X, p.Y, 1, false, btn)
+end
+
+local function robustClick(btn)
+    task.wait(1)
+    for _=1,3 do pcall(function() btn:Activate() end) task.wait(0.05) end
+    local pts = clickPointsOn(btn)
+    local t0 = os.clock()
+    while os.clock() - t0 < 1.5 do
+        for _,p in ipairs(pts) do
+            fireMouseAt(btn, p)
+            fireTouchAt(btn, p)
+            task.wait(0.06)
+        end
+    end
+    print("✅ Đã click 'Play Temple Trek'")
+end
+
+local btn = findBtn()
+if btn then
+    robustClick(btn)
+else
+    warn("⚠ Không tìm thấy nút 'Play Temple Trek'")
+end
+
+------------------------------------
+-- 4) TELEPORT TUẦN TỰ 4 TỌA ĐỘ   --
+------------------------------------
+local function teleportTo(pos)
+    local char = player.Character or player.CharacterAdded:Wait()
+    local hrp = char:WaitForChild("HumanoidRootPart")
+    hrp.CFrame = CFrame.new(pos)
+    print("📍 Teleported to:", pos)
+    task.wait(5) -- chờ 5 giây trước khi teleport tiếp
+end
+
+local teleportPoints = {
     Vector3.new(5917.25, 9992.50, 9000.61),
     Vector3.new(5825.16, 9992.50, 8974.40),
     Vector3.new(5742.24, 9992.50, 9019.49),
     Vector3.new(5721.12, 9992.50, 8999.03),
 }
-for _, p in ipairs(tpPoints) do
-    local hrp = getHRP()
-    hrp.CFrame = CFrame.new(p)
-    print("📍 Teleported:", p)
-    task.wait(0.5)
+
+for _, pos in ipairs(teleportPoints) do
+    teleportTo(pos)
 end
-
---------------------------------
--- 3) & 4) FLY MƯỢT + NOCLIP  --
---------------------------------
-local flying = false
-local targetPos = nil
-local flySpeed = 100
-local arriveEps = 3
-
--- Noclip chỉ khi đang bay
-RunService.Stepped:Connect(function()
-    if flying and player.Character then
-        for _, part in ipairs(player.Character:GetDescendants()) do
-            if part:IsA("BasePart") then part.CanCollide = false end
-        end
-    end
-end)
-
--- Di chuyển mượt
-RunService.Heartbeat:Connect(function(dt)
-    if not flying or not targetPos then return end
-    local char = player.Character
-    if not (char and char:FindFirstChild("HumanoidRootPart")) then return end
-    local hrp = char.HumanoidRootPart
-
-    local dir = (targetPos - hrp.Position)
-    local dist = dir.Magnitude
-    if dist > arriveEps then
-        local step = dir.Unit * flySpeed * dt
-        if step.Magnitude > dist then step = dir end
-        hrp.CFrame = hrp.CFrame + step
-    else
-        flying = false
-        print(("✅ Đã tới: (%.2f, %.2f, %.2f)"):format(targetPos.X, targetPos.Y, targetPos.Z))
-    end
-end)
-
--- Gọi hàm này sẽ CHỜ cho tới khi tới nơi
-local function flyTo(pos, speed)
-    targetPos = pos
-    flySpeed = speed or 100
-    flying = true
-    while flying do task.wait(0.05) end
-end
-
--- 3) Bay tới 5699… (nhanh hơn)
-flyTo(Vector3.new(5699.40, 9994.35, 8999.00), 200)
-
--- 4) Bay 3 tọa độ còn lại (lần lượt, có chờ đến nơi)
-flyTo(Vector3.new(-12007.47, 9529.38, -11910.67), 100)
-flyTo(Vector3.new(13.04, 37.35, -1500.01), 100)
-flyTo(Vector3.new(8999.53, 6814.95, 12011.76), 100)
