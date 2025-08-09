@@ -7,7 +7,8 @@ local GuiService = game:GetService("GuiService")
 local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
 
-local POST_DELAY = 2 -- ⏳ đợi sau mỗi TP/Fly
+local POST_DELAY = 5 -- ⏳ đợi sau mỗi TP/Fly
+local EXIT_DELAY = 10 -- ⏳ đợi sau Exit Home
 
 local function screenInsetFor(guiObject)
     local sg = guiObject:FindFirstAncestorOfClass("ScreenGui")
@@ -45,11 +46,14 @@ local function clickExitHomeGUI()
     return false
 end
 
-for _ = 1, 6 do
-    if clickExitHomeGUI() then break end
+-- Lặp click Exit Home 3 lần (có thể đổi số lần)
+for i = 1, 3 do
+    clickExitHomeGUI()
     task.wait(0.4)
 end
-task.wait(5) -- chờ 5s sau Exit Home
+
+-- Chờ 10 giây sau khi exit home xong
+task.wait(EXIT_DELAY)
 
 ------------------------------------
 -- 2) TELEPORT LIÊN TIẾP 4 TỌA ĐỘ  --
@@ -63,7 +67,7 @@ local function teleportTo(pos)
     local hrp = getHRP()
     hrp.CFrame = CFrame.new(pos)
     print(("📍 Teleported to: (%.2f, %.2f, %.2f)"):format(pos.X,pos.Y,pos.Z))
-    task.wait(POST_DELAY) -- ⏳ đợi 2s sau mỗi TP
+    task.wait(POST_DELAY) -- đợi 5 giây
 end
 
 teleportTo(Vector3.new(5917.25, 9992.50, 9000.61))
@@ -105,13 +109,13 @@ RunService.Heartbeat:Connect(function(dt)
     end
 end)
 
--- Gọi hàm này sẽ CHỜ tới nơi, rồi đợi thêm 2s
+-- Gọi hàm này sẽ chờ tới nơi, rồi đợi thêm 5s
 local function flyTo(pos, speed)
     targetPos = pos
     flySpeed = speed or 100
     flying = true
     while flying do task.wait(0.05) end
-    task.wait(POST_DELAY) -- ⏳ đợi 2s sau mỗi lần bay tới nơi
+    task.wait(POST_DELAY)
 end
 
 -- 3) Bay tới 5699… (nhanh hơn)
