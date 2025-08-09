@@ -1,6 +1,3 @@
----------------------------
--- 1) EXIT HOME CLICKER  --
----------------------------
 local Players = game:GetService("Players")
 local VIM = game:GetService("VirtualInputManager")
 local GuiService = game:GetService("GuiService")
@@ -95,7 +92,7 @@ local function flyTo(targetPos, speed)
     stepConn:Disconnect()
     hbConn:Disconnect()
     print("✅ Đã tới tọa độ bay:", targetPos)
-    task.wait(5) -- chờ 5 giây trước khi bay tiếp
+    task.wait(10) -- chờ 5 giây trước khi bay tiếp
 end
 
 -- Danh sách điểm bay
@@ -206,3 +203,4 @@ local teleportPoints = {
 for _, pos in ipairs(teleportPoints) do
     teleportTo(pos)
 end
+
